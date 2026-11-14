@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Маршрут пациента: впервые выявленное повышение АД</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+    background: linear-gradient(160deg, #e8f0f8 0%, #f5f9fc 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 32px 20px 64px;
+    color: #1f2e3d;
+  }
+
+  .app { max-width: 960px; width: 100%; }
+
+  /* ---------- Прогресс ---------- */
+  .progress-wrap { margin-bottom: 28px; }
+  .progress-label {
+    font-size: 0.95rem; color: #5a6f82; margin-bottom: 10px;
+    display: flex; justify-content: space-between;
+  }
+  .progress-bar { height: 10px; background: #d6e2ee; border-radius: 20px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #2e86c1, #1e6fa8);
+    border-radius: 20px; transition: width 0.4s ease;
+  }
+
+  /* ---------- Карточка ---------- */
+  .card {
+    background: #fff; border-radius: 28px;
+    box-shadow: 0 24px 56px rgba(20, 50, 80, 0.13);
+    padding: 48px 48px 40px;
+    animation: slideIn 0.35s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card.hidden { display: none; }
+
+  .card-tag {
+    display: inline-block; background: #e3eef8; color: #1e6fa8;
+    font-size: 0.85rem; font-weight: 600; padding: 6px 18px;
+    border-radius: 40px; margin-bottom: 18px; letter-spacing: 0.3px;
+  }
+  .card-tag.warn { background: #fdecea; color: #c0392b; }
+  .card-tag.ok   { background: #e6f6ea; color: #1e8449; }
+
+  .card h2 { font-size: 1.8rem; line-height: 1.3; color: #143a5a; margin-bottom: 20px; }
+  .card h3 { font-size: 1.2rem; color: #1e6fa8; margin: 26px 0 12px; }
+  .card p  { font-size: 1.08rem; line-height: 1.75; margin-bottom: 16px; color: #2c3e50; }
+  .card ul { margin: 0 0 18px 4px; padding-left: 22px; }
+  .card li { font-size: 1.05rem; line-height: 1.7; margin-bottom: 12px; color: #2c3e50; }
+  .card li strong { color: #143a5a; }
+
+  .nested-list { margin-top: 10px; margin-bottom: 0; padding-left: 22px; }
+  .nested-list li { font-size: 1rem; margin-bottom: 8px; }
+
+  .callout {
+    background: #eaf7ea; border-left: 6px solid #2e8b57;
+    padding: 18px 20px; border-radius: 14px;
+    font-size: 1rem; line-height: 1.65; margin-bottom: 18px;
+  }
+  .callout.red  { background: #fdf0ef; border-left-color: #c0392b; }
+  .callout.blue { background: #eaf2fb; border-left-color: #2e86c1; }
+  .callout strong { color: inherit; }
+
+  /* ---------- Кнопки ---------- */
+  .btn-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit;
+    font-size: 1.05rem; font-weight: 600;
+    padding: 16px 30px; border-radius: 60px;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: #1e6fa8; color: #fff;
+    box-shadow: 0 6px 18px rgba(30, 111, 168, 0.35);
+  }
+  .btn-primary:hover { background: #155a8a; }
+  .btn-secondary { background: #eef3f8; color: #2c4a66; }
+  .btn-secondary:hover { background: #e0e9f2; }
+
+  /* ---------- Схема наложения манжеты ---------- */
+  .bp-scheme {
+    background: linear-gradient(180deg, #f8fbfe 0%, #eef5fb 100%);
+    border: 1px solid #dce8f2;
+    border-radius: 24px;
+    padding: 30px 26px 26px;
+    margin: 26px 0 22px;
+  }
+  .bp-scheme-title {
+    font-size: 1.1rem; font-weight: 600; color: #143a5a;
+    margin-bottom: 22px; text-align: center;
+  }
+  .scheme-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+
+  /* вертикальная схема руки */
+  .scheme-visual { display: flex; justify-content: center; }
+  .arm-line {
+    width: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  .zone {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    position: relative;
+  }
+  .zone-shoulder {
+    height: 70px;
+    background: linear-gradient(180deg, #f3d6bd, #e9b48c);
+    border: 2px dashed #c99670;
+  }
+  .zone-forearm {
+    height: 46px;
+    background: linear-gradient(180deg, #f3d6bd, #e9b48c);
+    border: 2px dashed #c99670;
+    opacity: 0.75;
+  }
+  .zone-label {
+    font-size: 0.75rem;
+    color: #8a5a3a;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .cuff-block {
+    width: 118%;
+    height: 56px;
+    background: linear-gradient(180deg, #4aa3dd, #1e6fa8);
+    border-radius: 10px;
+    margin: 0 -9%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 0 6px 14px rgba(30,111,168,0.35);
+    overflow: hidden;
+  }
+  .cuff-stripes {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.22) 0 6px,
+      transparent 6px 14px
+    );
+  }
+  .cuff-label {
+    position: relative;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+  }
+
+  .gap-block {
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+  }
+  .gap-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: 2px dashed #c0392b;
+    transform: translateX(-50%);
+  }
+  .gap-label {
+    position: relative;
+    background: #fff;
+    color: #c0392b;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid #f0b8b4;
+  }
+
+  .elbow-block {
+    width: 100%;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .elbow-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #c0392b;
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .elbow-label {
+    font-size: 0.8rem;
+    color: #c0392b;
+    font-weight: 700;
+    background: #fff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid #f0b8b4;
+    position: relative;
+  }
+
+  /* правая колонка с правилами */
+  .scheme-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .note-card {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: #fff;
+    border: 1px solid #e3ecf4;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 8px rgba(20,50,80,0.05);
+  }
+  .note-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #1e6fa8;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .note-card strong {
+    display: block;
+    font-size: 1rem;
+    color: #143a5a;
+    margin-bottom: 4px;
+  }
+  .note-card p {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: #4a5f72;
+    margin: 0;
+  }
+
+  /* ---------- Сравнение норм ---------- */
+  .compare-toggle { margin-top: 6px; }
+  .compare-block { display: none; margin-top: 20px; animation: slideIn 0.3s ease; }
+  .compare-block.visible { display: block; }
+
+  .compare-table-wrap {
+    overflow-x: auto; border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.98rem; background: #fff; min-width: 560px;
+  }
+  th {
+    background: #1e3a5f; color: #fff;
+    padding: 16px 14px; text-align: left;
+    font-weight: 600; font-size: 0.92rem;
+  }
+  td {
+    padding: 14px; border-bottom: 1px solid #e9edf2;
+    vertical-align: top; line-height: 1.5;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) { background: #f8fbfe; }
+  .row-rf { background: #fff6e5 !important; }
+  .row-us { background: #e8f0fe !important; }
+
+  .badge {
+    display: inline-block; padding: 3px 12px; border-radius: 20px;
+    font-size: 0.78rem; font-weight: 600; margin-left: 4px;
+    white-space: nowrap;
+  }
+  .badge-rf { background: #fdebd0; color: #a04000; }
+  .badge-us { background: #d4e6f1; color: #1a5276; }
+
+  .compare-note {
+    background: #eaf7ea; border-left: 6px solid #2e8b57;
+    padding: 18px 20px; border-radius: 14px;
+    margin-top: 18px; font-size: 1rem; line-height: 1.65;
+  }
+  .compare-source {
+    margin-top: 12px; font-size: 0.82rem;
+    color: #7a8b9c; text-align: center;
+  }
+
+  /* ---------- Финальная памятка ---------- */
+  .summary-list { counter-reset: step; list-style: none; padding-left: 0; margin: 0 0 18px; }
+  .summary-list li {
+    counter-increment: step; position: relative;
+    padding-left: 52px; margin-bottom: 18px;
+    font-size: 1.06rem; line-height: 1.6;
+  }
+  .summary-list li::before {
+    content: counter(step); position: absolute; left: 0; top: -2px;
+    width: 36px; height: 36px; background: #1e6fa8; color: #fff;
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; font-size: 1rem;
+  }
+
+  /* ---------- Мобильная адаптация ---------- */
+  @media (max-width: 640px) {
+    body { padding: 20px 12px 48px; }
+    .card { padding: 30px 22px 26px; border-radius: 22px; }
+    .card h2 { font-size: 1.4rem; }
+    .card p, .card li { font-size: 1rem; }
+    .btn { width: 100%; text-align: center; }
+    .btn-row { flex-direction: column; }
+    .bp-scheme { padding: 20px 14px 16px; }
+    .scheme-grid { grid-template-columns: 1fr; gap: 22px; }
+    .scheme-visual { order: 1; }
+    .scheme-notes { order: 2; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Прогресс -->
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span id="progressText">Шаг 0 из 7</span>
+      <span id="progressPercent">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <!-- ================= СТАРТ ================= -->
+  <section class="card" id="card-0">
+    <span class="card-tag">Старт</span>
+    <h2>У вас впервые обнаружили повышенное давление. Что это значит?</h2>
+    <p>Повышение артериального давления (АД) — очень распространённая ситуация. Важно знать главное:</p>
+    <div class="callout">
+      <strong>У большинства людей артериальная гипертензия никак не ощущается.</strong> Человек может чувствовать себя абсолютно нормально — без головной боли, «шума в ушах» или тяжести в затылке — и при этом давление уже будет стабильно выше нормы.
+    </div>
+    <p>Именно поэтому гипертензию называют «тихим» состоянием: самочувствие — не надёжный ориентир. Ориентироваться нужно на <strong>цифры тонометра</strong> и на оценку врача.</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(1)">Понятно, что дальше? →</button>
+    </div>
+  </section>
+
+  <!-- ================= ШАГ 1 ================= -->
+  <section class="card hidden" id="card-1">
+    <span class="card-tag warn">Почему это важно</span>
+    <h2>Почему это важно, если я чувствую себя хорошо?</h2>
+    <p>Длительно повышенное давление постепенно нагружает сердце, сосуды, почки, мозг и глаза. Риски нарастают не за один день, а незаметно:</p>
+    <ul>
+      <li><strong>Сердце:</strong> утолщение стенки левого желудочка, сердечная недостаточность, инфаркт;</li>
+      <li><strong>Сосуды:</strong> ускоренное развитие атеросклероза, риск инсульта;</li>
+      <li><strong>Почки:</strong> постепенное снижение функции почек;</li>
+      <li><strong>Глаза:</strong> изменения сосудов сетчатки.</li>
+    </ul>
+    <div class="callout blue">
+      Хорошая новость: эти риски можно снижать. Но начинать нужно не с «почувствовать и успокоиться», а с оценки ситуации врачом.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(2)">Что мне сделать в первую очередь? →</button>
+      <button class="btn btn-secondary" onclick="goTo(0)">← Назад</button>
+    </div>
+  </section>
+
+  <!-- ================= ШАГ 2 ================= -->
+  <section class="card hidden" id="card-2">
+    <span class="card-tag">Шаг 1</span>
+    <h2>Зафиксировать цифры и правильно измерить давление</h2>
+    <p>Если тонометр показал повышенное давление, не стоит ставить себе диагноз самостоятельно — но и игнорировать цифры не нужно. Чтобы цифры были достоверными, важно измерять АД по правилам.</p>
+
+    <!-- Схема измерения -->
+    <div class="bp-scheme">
+      <div class="bp-scheme-title">Куда правильно накладывать манжету</div>
+
+      <div class="scheme-grid">
+
+        <!-- Левая колонка: вертикальная схема плеча -->
+        <div class="scheme-visual">
+          <div class="arm-line">
+            <div class="zone zone-shoulder">
+              <span class="zone-label">плечо</span>
+            </div>
+
+            <div class="cuff-block">
+              <div class="cuff-stripes"></div>
+              <span class="cuff-label">манжета</span>
+            </div>
+
+            <div class="gap-block">
+              <div class="gap-line"></div>
+              <span class="gap-label">2–3 см</span>
+            </div>
+
+            <div class="elbow-block">
+              <div class="elbow-dot"></div>
+              <span class="elbow-label">локтевой сгиб</span>
+            </div>
+
+            <div class="zone zone-forearm">
+              <span class="zone-label">предплечье</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Правая колонка: три ключевых правила -->
+        <div class="scheme-notes">
+          <div class="note-card">
+            <div class="note-icon">1</div>
+            <div>
+              <strong>Манжета — на плечо</strong>
+              <p>Не на предплечье и не на запястье. Плотно облегает плечо, но не сдавливает его.</p>
+            </div>
+          </div>
+          <div class="note-card">
+            <div class="note-icon">2</div>
+            <div>
+              <strong>Нижний край — на 2–3 см выше локтя</strong>
+              <p>Ориентир — локтевой сгиб. Если манжета сползла ниже, цифры будут недостоверными.</p>
+            </div>
+          </div>
+          <div class="note-card">
+            <div class="note-icon">3</div>
+            <div>
+              <strong>Рука — на уровне сердца</strong>
+              <p>Лежит на столе, ладонью вверх. Рука на весу или опущена вниз — ошибка.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <h3>Правила измерения АД</h3>
+    <ul>
+      <li><strong>Подготовка:</strong> не курите, не пейте кофе и крепкий чай, не занимайтесь физической нагрузкой за 30 минут до измерения. Опорожните мочевой пузырь.</li>
+      <li><strong>Отдых:</strong> посидите спокойно 5 минут перед измерением.</li>
+      <li><strong>Поза:</strong> сидя, спина с опорой, ноги на полу, не скрещены. Рука лежит на столе на уровне сердца, ладонью вверх.</li>
+      <li><strong>Манжета:</strong> накладывается на плечо так, чтобы нижний край был на 2–3 см выше локтевого сгиба. Манжета должна плотно облегать плечо, но не сдавливать его.</li>
+      <li><strong>Во время измерения:</strong> не разговаривайте, не двигайтесь, не напрягайте руку. Дышите ровно.</li>
+      <li><strong>Кратность:</strong> измеряйте АД не менее двух раз с интервалом 1–2 минуты. Если разница между измерениями больше 5 мм рт. ст., измерьте третий раз. Ориентируйтесь на среднее значение.</li>
+      <li><strong>Разница между руками:</strong> при первом измерении желательно измерить АД на обеих руках. Если разница систолического давления между руками устойчиво превышает 15–20 мм рт. ст., стоит сообщить об этом врачу — это может быть поводом для дополнительного обследования.</li>
+      <li><strong>Время:</strong> утром — до приёма лекарств и до завтрака, вечером — перед сном. Желательно в одно и то же время.</li>
+      <li><strong>Запись:</strong> записывайте дату, время, цифры и руку, на которой измеряли. Это поможет врачу увидеть картину, а не единичный случай.</li>
+    </ul>
+
+    <div class="callout red">
+      <strong>Частые ошибки:</strong> измерение сразу после нагрузки или стресса, рука на весу, манжета не по размеру, разговор во время измерения, однократное измерение «на всякий случай». Такие цифры могут быть недостоверными — и ввести в заблуждение и вас, и врача.
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(3)">Зачем идти к врачу? →</button>
+      <button class="btn btn-secondary" onclick="goTo(1)">← Назад</button>
+    </div>
+  </section>
+
+  <!-- ================= ШАГ 3 ================= -->
+  <section class="card hidden" id="card-3">
+    <span class="card-tag">Шаг 2</span>
+    <h2>Визит к врачу — обязательный шаг</h2>
+    <p>При впервые выявленном повышении АД визит к врачу нужен не формально, а чтобы:</p>
+    <ul>
+      <li>подтвердить, действительно ли давление повышено стабильно;</li>
+      <li>оценить общий сердечно-сосудистый риск;</li>
+      <li>исключить ситуации, когда повышение АД — следствие другого состояния;</li>
+      <li>определить, нужно ли лечение уже сейчас и какое.</li>
+    </ul>
+    <div class="callout red">
+      <strong>Важно:</strong> не стоит откладывать визит «до понедельника» или «пока не почувствую». Как раз отсутствие симптомов — частая причина позднего обращения.
+    </div>
+
+    <h3>Что называют гипертоническим кризом</h3>
+    <p>В обиходе «гипертоническим кризом» называют резкое повышение давления, которое сопровождается ухудшением самочувствия. С медицинской точки зрения важно различать два варианта:</p>
+
+    <div class="callout blue">
+      <strong>1. Резкое повышение АД без поражения органов-мишеней</strong><br>
+      Давление высокое (например, ≥180/120), но нет боли в груди, одышки, слабости в руке или ноге, нарушения речи или зрения. Это <strong>не неотложное состояние</strong>, но требует срочной связи с врачом: он решит, нужно ли скорректировать лечение. Резко снижать давление самостоятельно таблетками «под язык» не стоит — это может быть опасно.
+    </div>
+
+    <div class="callout red">
+      <strong>2. Гипертензивное неотложное состояние (истинный криз)</strong><br>
+      Высокое давление <strong>плюс</strong> признаки острого поражения органов: сильная боль в груди, выраженная одышка, слабость или онемение в руке/ноге, асимметрия лица, нарушение речи, потеря зрения, спутанность сознания. <strong>Это требует вызова скорой помощи.</strong> Врачи будут снижать давление постепенно и контролируемо, часто в условиях стационара.
+    </div>
+
+    <p><strong>Почему нельзя просто «сбить» давление дома?</strong> При длительно повышенном давлении организм адаптируется. Слишком быстрое снижение может привести к нарушению кровоснабжения мозга, сердца и почек. Поэтому решение о темпе снижения и препаратах принимает врач.</p>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(4)">Что будет на приёме? →</button>
+      <button class="btn btn-secondary" onclick="goTo(2)">← Назад</button>
+    </div>
+  </section>
+
+  <!-- ================= ШАГ 4 ================= -->
+  <section class="card hidden" id="card-4">
+    <span class="card-tag">Шаг 3</span>
+    <h2>Какое обследование может понадобиться</h2>
+    <p>Объём обследования определяет врач. Обычно он включает несколько уровней:</p>
+    <ul>
+      <li><strong>Подтверждение и уточнение цифр АД:</strong> повторные измерения в кабинете, домашний дневник АД, при необходимости — суточное мониторирование АД.</li>
+      <li>
+        <strong>Оценка органов-мишеней и метаболического риска:</strong>
+        <ul class="nested-list">
+          <li>общий анализ крови;</li>
+          <li>биохимия: натрий, калий, кальций, креатинин с расчётом рСКФ, липидный профиль, глюкоза/HbA1c, ТТГ, мочевая кислота;</li>
+          <li>анализ мочи: общий + альбумин/креатинин (UACR);</li>
+          <li>ЭКГ;</li>
+          <li>при необходимости — эхокардиография, УЗИ почек.</li>
+        </ul>
+      </li>
+      <li><strong>Поиск возможных причин повышения:</strong> в большинстве случаев речь идёт о первичной (эссенциальной) гипертензии, но врач может заподозрить и вторичные причины — в том числе первичный альдостеронизм (для его исключения может понадобиться исследование альдостерона и ренина).</li>
+    </ul>
+    <div class="callout blue">
+      Часть анализов может быть назначена не сразу, а поэтапно — это нормально. Главное, чтобы объём обследования определял врач с учётом вашей ситуации, а не список из интернета.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(5)">Какие причины бывают неочевидными? →</button>
+      <button class="btn btn-secondary" onclick="goTo(3)">← Назад</button>
+    </div>
+  </section>
+
+  <!-- ================= ШАГ 5 ================= -->
+  <section class="card hidden" id="card-5">
+    <span class="card-tag warn">Неочевидные причины</span>
+    <h2>Редкие и неочевидные причины повышения АД</h2>
+    <p>Иногда повышенное давление — не самостоятельное заболевание, а симптом другого состояния. Врач думает об этом, если:</p>
+    <ul>
+      <li>АД повышается очень высоко и плохо поддаётся лечению;</li>
+      <li>повышение возникло в молодом возрасте;</li>
+      <li>есть резкие приступы с сердцебиением, потливостью, дрожью;</li>
+      <li>давление сопровождается специфическими изменениями анализов;</li>
+      <li>есть признаки эндокринных, почечных или сосудистых заболеваний.</li>
+    </ul>
+    <div class="callout blue">
+      К таким причинам могут относиться некоторые эндокринные заболевания, болезни почек и почечных артерий, нарушения дыхания во сне (апноэ) и другие состояния. Отдельно стоит упомянуть первичный альдостеронизм — его распространённость среди пациентов с гипертензией выше, чем считалось ранее, и для его исключения может потребоваться исследование уровня альдостерона и ренина в крови. Это не значит, что у каждого пациента редкая причина — но врач оценивает и такую возможность.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(6)">А что с лечением? →</button>
+      <button class="btn btn-secondary" onclick="goTo(4)">← Назад</button>
+    </div>
+  </section>
+
+  <!-- ================= ШАГ 6 ================= -->
+  <section class="card hidden" id="card-6">
+    <span class="card-tag">Шаг 4</span>
+    <h2>Варианты лечения, которые может предложить врач</h2>
+    <p>Лечение при артериальной гипертензии почти всегда комплексное.</p>
+    <ul>
+      <li><strong>Изменение образа жизни:</strong> снижение избытка соли, коррекция веса, регулярная физическая активность, ограничение алкоголя, отказ от курения, нормализация сна и управление стрессом. Это не «мягкая рекомендация», а полноценная часть лечения.</li>
+      <li><strong>Лекарственная терапия:</strong> врач может назначить препарат (или комбинацию) из основных групп. Выбор зависит от цифр АД, сопутствующих заболеваний, возраста, переносимости. <strong>Не назначайте себе препараты самостоятельно или «по совету знакомых».</strong></li>
+      <li><strong>Наблюдение и коррекция:</strong> врач будет оценивать эффект, переносимость и при необходимости менять схему.</li>
+    </ul>
+
+    <h3>Когда врач может сразу назначить комбинацию препаратов</h3>
+    <p>Иногда лечение начинают не с одного препарата, а сразу с двух. Это не «слишком агрессивно» — в определённых ситуациях это обоснованный и более эффективный подход.</p>
+    <ul>
+      <li><strong>АД стабильно ≥140/90 мм рт. ст.:</strong> одного препарата, скорее всего, не хватит, а задержка в достижении цели увеличивает риск. По американской классификации это stage 2, по российской — АГ 1–2 степени в зависимости от цифр.</li>
+      <li><strong>Высокий сердечно-сосудистый риск при АД 130–139/80–89:</strong> если уже есть сердечно-сосудистое заболевание, диабет, болезнь почек или риск по шкале PREVENT ≥7,5%.</li>
+      <li><strong>Большая разница с целевым АД:</strong> когда до цели &lt;130/80 нужно снизить давление более чем на 20/10 мм рт. ст.</li>
+    </ul>
+
+    <h3>Почему одна таблетка с двумя препаратами может быть лучше</h3>
+    <p>Фиксированная комбинация (SPC) — это одна таблетка, содержащая два препарата из разных групп. У неё есть практические преимущества:</p>
+    <ul>
+      <li><strong>Проще соблюдать режим:</strong> одна таблетка вместо двух — меньше шансов забыть или перепутать дозу.</li>
+      <li><strong>Быстрее достигается контроль:</strong> два механизма работают одновременно.</li>
+      <li><strong>Меньше побочных эффектов:</strong> компоненты часто уравновешивают друг друга (например, влияние на калий или отёки).</li>
+      <li><strong>Лучше долгосрочный прогноз:</strong> данные показывают снижение риска сердечно-сосудистых событий по сравнению с раздельным приёмом тех же препаратов.</li>
+    </ul>
+    <div class="callout blue">
+      <strong>Важно:</strong> фиксированная комбинация подходит не всем. Врач может предпочесть раздельный приём, если пациент ослаблен, есть риск ортостатической гипотензии, или нужна гибкость в подборе доз каждого компонента. Решение всегда индивидуальное.
+    </div>
+
+    <button class="btn btn-secondary compare-toggle" onclick="toggleCompare()" id="compareBtn">📊 Показать нормы АД: РФ vs США</button>
+
+    <div class="compare-block" id="compareBlock">
+      <div class="compare-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Категория / Показатель</th>
+              <th>🇷🇺 Россия (РКО, 2024)</th>
+              <th>🇺🇸 США (AHA/ACC, 2025)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Нормальное АД</strong></td>
+              <td>&lt; 120 / &lt; 80</td>
+              <td>&lt; 120 / &lt; 80</td>
+            </tr>
+            <tr class="row-rf">
+              <td><strong>Высокое нормальное / Стадия 1</strong></td>
+              <td>130–139 / 85–89 <span class="badge badge-rf">высокое нормальное</span></td>
+              <td>130–139 / 80–89 <span class="badge badge-us">гипертензия 1 ст.</span></td>
+            </tr>
+            <tr>
+              <td><strong>Гипертензия 1 ст. / 2 ст.</strong></td>
+              <td>140–159 / 90–99 <span class="badge badge-rf">АГ 1 степени</span></td>
+              <td>≥ 140 / ≥ 90 <span class="badge badge-us">гипертензия 2 ст.</span></td>
+            </tr>
+            <tr>
+              <td><strong>Гипертензия 2 ст. / 3 ст.</strong></td>
+              <td>160–179 / 100–109 <span class="badge badge-rf">АГ 2 степени</span></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>Тяжёлая гипертензия</strong></td>
+              <td>≥ 180 / ≥ 110 <span class="badge badge-rf">АГ 3 степени</span></td>
+              <td>≥ 180 / ≥ 120 <span class="badge badge-us">тяжёлая гипертензия</span></td>
+            </tr>
+            <tr>
+              <td><strong>Когда это неотложное состояние?</strong></td>
+              <td colspan="2" style="background:#fdf0ef;">
+                <strong>Только при остром поражении органов-мишеней</strong> (боль в груди, одышка, неврологические симптомы, нарушение зрения и т.п.). Без этих симптомов неотложная помощь не требуется — нужен срочный контакт с врачом.
+              </td>
+            </tr>
+            <tr class="row-us">
+              <td><strong>Целевой уровень лечения</strong></td>
+              <td>&lt; 140/90 (при переносимости &lt; 130/80)</td>
+              <td><strong>&lt; 130/80 для всех</strong></td>
+            </tr>
+            <tr>
+              <td><strong>Когда начинать лекарства</strong></td>
+              <td>При стойком ≥ 140/90 или ≥ 130/80 при высоком риске</td>
+              <td>При ≥ 130/80, если через 3–6 мес. образ жизни не помог</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="compare-note">
+        <strong>💡 Что это значит для вас:</strong> если давление держится на уровне <strong>135/85</strong>, российский врач может предложить сначала изменить образ жизни. Американский подход считает эти цифры уже гипертензией и рекомендует вернуться к вопросу о таблетках через 3–6 месяцев, если давление не снизится. Оба подхода согласны: <strong>цифры выше 130/80 опасны при длительном сохранении</strong>.
+      </div>
+      <p class="compare-source">Источники: РКО «Артериальная гипертензия у взрослых», 2024; AHA/ACC High Blood Pressure Guideline, 2025.</p>
+    </div>
+
+    <div class="btn-row" style="margin-top:22px;">
+      <button class="btn btn-primary" onclick="goTo(7)">Главное, что нужно запомнить →</button>
+      <button class="btn btn-secondary" onclick="goTo(5)">← Назад</button>
+    </div>
+  </section>
+
+  <!-- ================= ФИНАЛ ================= -->
+  <section class="card hidden" id="card-7">
+    <span class="card-tag ok">Памятка</span>
+    <h2>Маршрут коротко</h2>
+    <ol class="summary-list">
+      <li>Впервые выявленное повышение АД — это не повод паниковать, но и не повод игнорировать.</li>
+      <li>Отсутствие симптомов не означает отсутствие риска.</li>
+      <li>Зафиксируйте цифры дома по правилам измерения и запишитесь к врачу.</li>
+      <li>Врач определит объём обследования и оценит риск.</li>
+      <li>Лечение может включать образ жизни и лекарства — схему подбирает врач. Иногда сразу назначается комбинация препаратов.</li>
+      <li>При очень высоком давлении с тревожными симптомами (боль в груди, одышка, слабость, нарушение речи или зрения) — вызывайте скорую помощь.</li>
+    </ol>
+    <div class="callout">
+      <strong>Помните:</strong> цифры 130–139/80–89 в разных странах трактуются по-разному, но длительное повышение давления выше 130/80 в любом случае требует внимания врача. А при давлении ≥180/120 без тревожных симптомов нужен срочный контакт с врачом — но не обязательно скорая.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="restart()">🔄 Пройти маршрут заново</button>
+      <button class="btn btn-secondary" onclick="goTo(6)">← Назад</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  function goTo(step) {
+    document.querySelectorAll('.card').forEach(c => c.classList.add('hidden'));
+    const target = document.getElementById('card-' + step);
+    if (target) {
+      target.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      updateProgress(step);
+    }
+  }
+
+  function updateProgress(step) {
+    const percent = Math.round((step / 7) * 100);
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('progressPercent').textContent = percent + '%';
+    document.getElementById('progressText').textContent =
+      step === 0 ? 'Старт' :
+      step === 7 ? 'Финал' :
+      'Шаг ' + step + ' из 6';
+  }
+
+  function toggleCompare() {
+    const block = document.getElementById('compareBlock');
+    const btn = document.getElementById('compareBtn');
+    block.classList.toggle('visible');
+    btn.textContent = block.classList.contains('visible')
+      ? '📊 Скрыть сравнение норм ↑'
+      : '📊 Показать нормы АД: РФ vs США';
+  }
+
+  function restart() {
+    const block = document.getElementById('compareBlock');
+    if (block) block.classList.remove('visible');
+    const btn = document.getElementById('compareBtn');
+    if (btn) btn.textContent = '📊 Показать нормы АД: РФ vs США';
+    goTo(0);
+  }
+
+  updateProgress(0);
+</script>
+
+</body>
+</html>
